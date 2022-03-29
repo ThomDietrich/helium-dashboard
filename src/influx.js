@@ -6,6 +6,15 @@ class InfluxSingleton {
 
   constructor() {
 
+    if (!process.env.INFLUX_HOST || !process.env.INFLUX_TOKEN || !process.env.INFLUX_ORG || !process.env.INFLUX_BUCKET) {
+      console.log("Necessary environment variables missing. Exiting.")
+      process.exit(1)
+    }
+
+    if (!process.env.INFLUX_PORT) {
+      process.env.INFLUX_PORT = '8086'
+    }
+
     if (this.instance) {
       console.log("Influx: reusing instance");
       return instance;
