@@ -21,6 +21,7 @@ async function getPrice() {
   point.floatField('eur', response.data.helium.eur);
 
   if (DEBUG_TO_CONSOLE) {
+    console.log("\n=== Price " + "=".repeat(100));
     console.log(point)
   } else {
     Influx.write.writePoint(point);
@@ -41,6 +42,7 @@ async function processAccountStats() {
   point.floatField('balance_dc_dc', data.dcBalance.floatBalance);
 
   if (DEBUG_TO_CONSOLE) {
+    console.log("\n=== Account Stats " + "=".repeat(100));
     console.log(point)
   } else {
     Influx.write.writePoint(point);
@@ -73,6 +75,7 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
   }
 
   if (DEBUG_TO_CONSOLE) {
+    console.log("\n=== Hotspot Stats " + "=".repeat(100));
     console.log(point)
   } else {
     Influx.write.writePoint(point);
@@ -166,9 +169,10 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
     }
 
     if (DEBUG_TO_CONSOLE) {
-      console.log("\n" + "=".repeat(120));
+      console.log("\n=== Activity " + "=".repeat(100));
       console.log(act);
-      console.log(points);
+      console.log()
+      console.log(point);
     }
     return point;
   });
@@ -178,7 +182,7 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
   }
 }
 
-async function processHeliumStats() {
+async function processNetworkStats() {
   const response = await axios.get('https://api.helium.io/v1/stats');
   const data = response.data.data;
   console.log('Helium: collecting network stats');
@@ -194,6 +198,7 @@ async function processHeliumStats() {
   point.intField('challenges_active', data.challenge_counts.active);
 
   if (DEBUG_TO_CONSOLE) {
+    console.log("\n=== Network Stats " + "=".repeat(100));
     console.log(point)
   } else {
     Influx.write.writePoint(point);
@@ -214,7 +219,7 @@ async function processHelium() {
 
   await Promise.all([
     ...processHotspotsList,
-    processHeliumStats(),
+    processNetworkStats(),
     processAccountStats(),
     getPrice(),
   ]);
@@ -222,6 +227,7 @@ async function processHelium() {
   if (DEBUG_TO_CONSOLE) {
     console.log("Helium: Wrote stats to console for debugging");
   } else {
+    Influx.write.writePoint(new Point("update").timestamp(processingTime).booleanField('completed', true));
     await Influx.flush();
     console.log('Helium: Influx write success');
   }
