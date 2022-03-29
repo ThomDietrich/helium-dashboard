@@ -12,6 +12,7 @@ const helium = new Client();
 
 async function getPrice() {
   const response = await axios('https://api.coingecko.com/api/v3/simple/price?ids=helium&vs_currencies=USD,EUR');
+  console.log('Helium: collecting price data');
 
   let point = new Point("helium_price")
   point.timestamp(processingTime);
@@ -30,7 +31,7 @@ async function getPrice() {
 
 async function processAccountStats() {
   let data = await helium.accounts.get(process.env.HELIUM_WALLET);
-
+  console.log('Helium: collecting account stats');
   let point = new Point("helium_account")
     .timestamp(processingTime)
     .tag('account', data.address)
@@ -99,9 +100,6 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
     return;
   }
 
-  console.log(`Helium: fetched ${activities.length} activities for ${hotspotName} (first ${DateTime.fromSeconds(activities[activities.length-1].time).toString()})`);
-  // activities.map(act => console.log(DateTime.fromSeconds(act.time).toString()));
-
   // convert activities to Influx points
   const points = activities.map(act => {
     const point = new Point('helium_activity')
@@ -128,32 +126,27 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
         point.tag('reward_type_poc', 'misc');
         point.tag('reward_type_explorer', 'misc');
       }
-      point.intField('count', 1);
       point.floatField('reward_hnt', act.totalAmount.floatBalance);
 
     } else if (act.type == 'poc_receipts_v1' && act.challenger == hotspotIdentifier) {
       // "Challenge Beaconer"
       point.tag('type', 'challenged_beaconer');
       point.tag('result', act.path[0].result);
-      point.intField('count', 1);
 
     } else if (act.type == 'poc_receipts_v1' && act.path[0].challengee == hotspotIdentifier) {
       // "Broadcast Beacon"
       point.tag('type', 'broadcast_beacon');
       point.tag('result', act.path[0].result);
-      point.intField('count', 1);
       point.intField('witnesses', act.path[0].witnesses.length);
 
     } else if (act.type == 'poc_receipts_v1' && act.path[0].witnesses.some(w => w.gateway == hotspotIdentifier)) {
       // "Witnessed Beacon"
       point.tag('type', 'witnessed_beacon');
       point.tag('result', act.path[0].result);
-      point.intField('count', 1);
 
     } else if (act.type == 'poc_request_v1' && act.challenger == hotspotIdentifier) {
       // "Constructed Challenge"
       point.tag('type', 'constructed_challenge');
-      point.intField('count', 1);
 
     } else if (act.type == 'state_channel_close_v1') {
       // "Data Transfer"
@@ -162,11 +155,11 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
       point.intField('dc', act.stateChannel.summaries[0].num_dcs);
 
     } else {
-      // default
-      console.log('Invalid type: ', act.type);
-      console.log(act);
-      return new Point('helium_activity');  // return blank point
+      // catch unknown activity to be implemented
+      point.tag('type', 'unknown');
     }
+
+    point.intField('count', 1);
 
     if (DEBUG_TO_CONSOLE) {
       console.log("\n=== Activity " + "=".repeat(100));
@@ -177,8 +170,10 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
     return point;
   });
 
+  console.log(`Helium: fetched ${activities.length} activities for ${hotspotName} (first ${DateTime.fromSeconds(activities[activities.length-1].time).toString()})`);
+
   if (!DEBUG_TO_CONSOLE) {
-    Influx.write.writePoint(points);
+    Influx.write.writePoints(points);
   }
 }
 
