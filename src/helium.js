@@ -1,5 +1,5 @@
 const { DateTime } = require('luxon');
-const { Client, RewardsV1, RewardsV2, PocReceiptsV1, Challenge} = require('@helium/http');
+const { Client, RewardsV1, UnknownTransaction} = require('@helium/http');
 const { Influx, Point } = require('./influx');
 const { default: axios } = require('axios');
 
@@ -9,13 +9,6 @@ const DEBUG_TO_CONSOLE = process.env.DEBUG_TO_CONSOLE ? true : false;
 
 const processingTime = new Date(); // now
 const helium = new Client();
-
-const activityType = {
-  rewards_v2: 'rewards',
-  poc_receipts_v1: 'witnessed',
-  poc_request_v1: 'challenge',
-  state_channel_close_v1: 'data_transfer'
-}
 
 async function getPrice() {
   const response = await axios('https://api.coingecko.com/api/v3/simple/price?ids=helium&vs_currencies=USD,EUR');
@@ -69,17 +62,14 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
     .tag('hotspot_name', hotspotName)
     .tag('geotext', hotspotGeotext)
     .tag('latitude', hotspot.lat)
-    .tag('longitude', hotspot.lon)
+    .tag('longitude', hotspot.lng)
     .tag('mode', hotspot.mode)
   ;
 
-  point.floatField('reward_scale', hotspot.reward_scale);
+  point.floatField('reward_scale', hotspot.rewardScale);
 
   if (hotspot.score) {
     point.floatField('score', hotspot.score);
-  }
-  if (hotspot.scoreUpdateHeight) {
-    point.floatField('scoreUpdateHeight', hotspot.scoreUpdateHeight);
   }
 
   if (DEBUG_TO_CONSOLE) {
@@ -118,8 +108,9 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
       .tag('geotext', hotspotGeotext)
     ;
 
-    if (act instanceof RewardsV1) {
-      // Links to "Received Mining Reward"
+    if (act instanceof RewardsV1 && act.type == 'rewards_v2') {
+      // "Received Mining Reward"
+      point.tag('type', 'received_mining_reward');
       if (act.rewards.length == 1) {
         reward_type = act.rewards[0].type
         let reward_type_explorer = (reward_type == 'poc_witnesses') ? 'witness' : (
@@ -127,53 +118,62 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
             (reward_type == 'poc_challengees') ? 'beacon' : 'unknown'
           )
         )
-        point.tag('type_poc', reward_type);
-        point.tag('type_explorer', reward_type_explorer);
+        point.tag('reward_type_poc', reward_type);
+        point.tag('reward_type_explorer', reward_type_explorer);
       } else {
         console.log(act.rewards)
-        point.tag('type_poc', 'misc');
-        point.tag('type_explorer', 'misc');
+        point.tag('reward_type_poc', 'misc');
+        point.tag('reward_type_explorer', 'misc');
       }
-      point.floatField('reward', act.totalAmount.floatBalance);
+      point.intField('count', 1);
+      point.floatField('reward_hnt', act.totalAmount.floatBalance);
 
-    } else if (act.type == 'poc_receipts_v1') {
-      if (act.path[0].challengee == hotspotIdentifier) {
-        // Links to "Broadcast Beacon"
-        //   Field count: Events of beacons broadcasted
-        //   Field witnesses: Number of witnesses of the hotspot's beacon
-        point.tag('type', 'broadcast_beacon');
-        point.intField('count', 1);
-        point.intField('witnesses', act.path[0].witnesses.length);
-      } else {
-        // Explorer: Links to "Challenged Beaconer"
-        //   Field count: Events of challenges sent
-        point.tag('type', 'challenged_beaconer');
-        point.tag('result', act.path[0].result);
-        point.intField('count', 1);
-      }
+    } else if (act.type == 'poc_receipts_v1' && act.challenger == hotspotIdentifier) {
+      // "Challenge Beaconer"
+      point.tag('type', 'challenged_beaconer');
+      point.tag('result', act.path[0].result);
+      point.intField('count', 1);
 
-    } else if (act.type == 'poc_request_v1') {
-      // Explorer: Links to "Constructed Challenge"
+    } else if (act.type == 'poc_receipts_v1' && act.path[0].challengee == hotspotIdentifier) {
+      // "Broadcast Beacon"
+      point.tag('type', 'broadcast_beacon');
+      point.tag('result', act.path[0].result);
+      point.intField('count', 1);
+      point.intField('witnesses', act.path[0].witnesses.length);
+
+    } else if (act.type == 'poc_receipts_v1' && act.path[0].witnesses.some(w => w.gateway == hotspotIdentifier)) {
+      // "Witnessed Beacon"
+      point.tag('type', 'witnessed_beacon');
+      point.tag('result', act.path[0].result);
+      point.intField('count', 1);
+
+    } else if (act.type == 'poc_request_v1' && act.challenger == hotspotIdentifier) {
+      // "Constructed Challenge"
       point.tag('type', 'constructed_challenge');
       point.intField('count', 1);
 
     } else if (act.type == 'state_channel_close_v1') {
+      // "Data Transfer"
       point.tag('type', 'data_transfer');
       point.intField('packets', act.stateChannel.summaries[0].num_packets);
       point.intField('dc', act.stateChannel.summaries[0].num_dcs);
 
     } else {
+      // default
       console.log('Invalid type: ', act.type);
       console.log(act);
       return new Point('helium_activity');  // return blank point
     }
 
+    if (DEBUG_TO_CONSOLE) {
+      console.log("\n" + "=".repeat(120));
+      console.log(act);
+      console.log(points);
+    }
     return point;
   });
 
-  if (DEBUG_TO_CONSOLE) {
-    console.log(points)
-  } else {
+  if (!DEBUG_TO_CONSOLE) {
     Influx.write.writePoint(points);
   }
 }

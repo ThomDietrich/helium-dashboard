@@ -2,9 +2,9 @@ const {Influx} = require('./src/influx');
 const helium = require('./src/helium');
 
 exports.handler = async (event, context) => {
-  console.log('Node ver: ', process.version);
-  console.log('Received event:', JSON.stringify(event, null, 2));
-  console.log(`Execution at ${new Date()}`);
+  //console.log('Node ver:', process.version);
+  //console.log('Received event:', JSON.stringify(event, null, 2));
+  console.log(`Helium API to InfluxDB exporter, running at ${new Date()}`);
 
   Influx.open(); // open influx connection
 

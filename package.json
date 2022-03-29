@@ -14,7 +14,7 @@
     "invoke": "aws lambda invoke --function-name dashboard-data-cap /dev/null --log-type Tail --query 'LogResult' --output text | base64 -d"
   },
   "dependencies": {
-    "@helium/http": "^3.36.7",
+    "@helium/http": "^4.0.0",
     "@influxdata/influxdb-client": "^1.9.0",
     "@influxdata/influxdb-client-apis": "^1.9.0",
     "@types/tough-cookie": "^4.0.0",
