@@ -111,7 +111,7 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
 
     if (act instanceof RewardsV1 && act.type == 'rewards_v2') {
       // "Received Mining Reward"
-      point.tag('type', 'received_mining_reward');
+      point.measurement('helium_reward')
       if (act.rewards.length == 1) {
         reward_type = act.rewards[0].type
         let reward_type_explorer = (reward_type == 'poc_witnesses') ? 'witness' : (
@@ -129,7 +129,7 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
       point.floatField('reward_hnt', act.totalAmount.floatBalance);
 
     } else if (act.type == 'poc_receipts_v1' && act.challenger == hotspotIdentifier) {
-      // "Challenge Beaconer"
+      // "Challenged Beaconer"
       point.tag('type', 'challenged_beaconer');
       point.tag('result', act.path[0].result);
 
@@ -152,7 +152,7 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
       // "Data Transfer"
       point.tag('type', 'data_transfer');
       point.intField('packets', act.stateChannel.summaries[0].num_packets);
-      point.intField('dc', act.stateChannel.summaries[0].num_dcs);
+      point.intField('dcs', act.stateChannel.summaries[0].num_dcs);
 
     } else {
       // catch unknown activity to be implemented
