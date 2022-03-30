@@ -159,7 +159,7 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
       point.tag('type', 'unknown');
     }
 
-    point.intField('count', 1);
+    point.booleanField('event', true);
 
     if (DEBUG_TO_CONSOLE) {
       console.log("\n=== Activity " + "=".repeat(100));
