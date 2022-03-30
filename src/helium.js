@@ -1,5 +1,5 @@
 const { DateTime } = require('luxon');
-const { Client, RewardsV1, UnknownTransaction} = require('@helium/http');
+const { Client, RewardsV1, UnknownTransaction, Network} = require('@helium/http');
 const { Influx, Point } = require('./influx');
 const { default: axios } = require('axios');
 
@@ -8,7 +8,7 @@ const ACTIVITY_LOOKBACK_HOURS = process.env.HELIUM_ACTIVITY_LOOKBACK_HOURS ? pro
 const DEBUG_TO_CONSOLE = process.env.DEBUG_TO_CONSOLE ? true : false;
 
 const processingTime = new Date(); // now
-const helium = new Client();
+const helium_client = new Client(Network.production, { retry: 10 });
 
 async function getPrice() {
   const response = await axios('https://api.coingecko.com/api/v3/simple/price?ids=helium&vs_currencies=USD,EUR');
@@ -30,7 +30,7 @@ async function getPrice() {
 }
 
 async function processAccountStats() {
-  let data = await helium.accounts.get(process.env.HELIUM_WALLET);
+  let data = await helium_client.accounts.get(process.env.HELIUM_WALLET);
   console.log('Helium: collecting account stats');
   let point = new Point("helium_account")
     .timestamp(processingTime)
@@ -53,7 +53,7 @@ async function processAccountStats() {
 async function processHotspotActivity(hotspotIdentifier, sinceDate) {
   let activities = [];
   let oldestTime = DateTime.now;
-  let hotspot = await helium.hotspots.get(hotspotIdentifier);
+  let hotspot = await helium_client.hotspots.get(hotspotIdentifier);
   let hotspotName = hotspot.name.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
   let hotspotGeotext = hotspot.geocode.shortCity + ", " + hotspot.geocode.shortStreet;
 
@@ -122,7 +122,7 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
         point.tag('reward_type_poc', reward_type);
         point.tag('reward_type_explorer', reward_type_explorer);
       } else {
-        console.log(act.rewards)
+        //console.log("Multiple reward types encounted:\n" + act.rewards)
         point.tag('reward_type_poc', 'misc');
         point.tag('reward_type_explorer', 'misc');
       }
@@ -131,18 +131,18 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
     } else if (act.type == 'poc_receipts_v1' && act.challenger == hotspotIdentifier) {
       // "Challenged Beaconer"
       point.tag('type', 'challenged_beaconer');
-      point.tag('result', act.path[0].result);
+      point.tag('poc_result', act.path[0].result);
 
     } else if (act.type == 'poc_receipts_v1' && act.path[0].challengee == hotspotIdentifier) {
       // "Broadcast Beacon"
       point.tag('type', 'broadcast_beacon');
-      point.tag('result', act.path[0].result);
+      point.tag('poc_result', act.path[0].result);
       point.intField('witnesses', act.path[0].witnesses.length);
 
     } else if (act.type == 'poc_receipts_v1' && act.path[0].witnesses.some(w => w.gateway == hotspotIdentifier)) {
       // "Witnessed Beacon"
       point.tag('type', 'witnessed_beacon');
-      point.tag('result', act.path[0].result);
+      point.tag('poc_result', act.path[0].result);
 
     } else if (act.type == 'poc_request_v1' && act.challenger == hotspotIdentifier) {
       // "Constructed Challenge"
