@@ -143,6 +143,7 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
       // "Witnessed Beacon"
       point.tag('type', 'witnessed_beacon');
       point.tag('poc_result', act.path[0].result);
+      point.tag('beaconer', act.path[0].challengee);
 
     } else if (act.type == 'poc_request_v1' && act.challenger == hotspotIdentifier) {
       // "Constructed Challenge"

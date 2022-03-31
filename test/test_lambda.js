@@ -9,5 +9,4 @@ const event = {
 };
 
 console.log('Running lambda...');
-lambda.handler(event).then(response => console.log('Response: ', response)).catch(err => console.log('Error: ', err));
-
+lambda.handler(event).then(response => console.log('Response:', response)).catch(err => console.log('Error: ', err));
