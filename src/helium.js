@@ -8,7 +8,7 @@ const ACTIVITY_LOOKBACK_HOURS = process.env.HELIUM_ACTIVITY_LOOKBACK_HOURS ? pro
 const DEBUG_TO_CONSOLE = process.env.DEBUG_TO_CONSOLE ? true : false;
 
 const processingTime = new Date(); // now
-const helium_client = new Client(Network.production, { retry: 10 });
+const helium_client = new Client(Network.production, { retry: 100 });
 
 async function getPrice() {
   const response = await axios('https://api.coingecko.com/api/v3/simple/price?ids=helium&vs_currencies=USD,EUR');
@@ -167,7 +167,8 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
 
     } else {
       point.measurement('helium_activity_unknown')
-      console.log("Unknown activity package encountered:\n" + act)
+      console.log("Unknown activity encountered:")
+      console.log(act)
     }
 
     if (DEBUG_TO_CONSOLE) {
