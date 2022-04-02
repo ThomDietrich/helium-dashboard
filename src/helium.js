@@ -222,6 +222,11 @@ async function processHelium() {
     return processHotspotActivity(hotspot.trim(), DateTime.local().minus({ hours: ACTIVITY_LOOKBACK_HOURS }));
   });
 
+  if (!DEBUG_TO_CONSOLE) {
+    Influx.write.writePoint(new Point("update").timestamp(processingTime).booleanField('processing', true));
+    await Influx.flush();
+  }
+
   await Promise.all([
     ...processHotspotsList,
     processNetworkStats(),
