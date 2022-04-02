@@ -106,10 +106,37 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
       .timestamp(DateTime.fromSeconds(act.time).toJSDate())
       .tag('hotspot_id', hotspotIdentifier)
       .tag('hotspot_name', hotspotName)
-      .tag('geotext', hotspotGeotext)
     ;
+    point.booleanField('event', true);
 
-    if (act instanceof RewardsV1 && act.type == 'rewards_v2') {
+    // Proof of Coverage activities
+
+    if (act.type == 'poc_receipts_v1' && act.challenger == hotspotIdentifier) {
+      // "Challenged Beaconer"
+      point.tag('poc_role', 'challenged_beaconer');
+      point.tag('poc_result', act.path[0].result);
+      point.intField('witnesses', act.path[0].witnesses.length);
+
+    } else if (act.type == 'poc_receipts_v1' && act.path[0].challengee == hotspotIdentifier) {
+      // "Broadcast Beacon"
+      point.tag('poc_role', 'broadcast_beacon');
+      point.tag('poc_result', act.path[0].result);
+      point.intField('witnesses', act.path[0].witnesses.length);
+
+    } else if (act.type == 'poc_receipts_v1' && act.path[0].witnesses.some(w => w.gateway == hotspotIdentifier)) {
+      // "Witnessed Beacon"
+      point.tag('poc_role', 'witnessed_beacon');
+      point.tag('poc_result', act.path[0].result);
+      point.tag('beaconer', act.path[0].challengee);
+      point.intField('witnesses', act.path[0].witnesses.length);
+
+    } else if (act.type == 'poc_request_v1' && act.challenger == hotspotIdentifier) {
+      // "Constructed Challenge"
+      point.tag('poc_role', 'constructed_challenge');
+
+    // Rewards activities
+
+    } else if (act instanceof RewardsV1 && act.type == 'rewards_v2') {
       // "Received Mining Reward"
       point.measurement('helium_reward')
       if (act.rewards.length == 1) {
@@ -123,44 +150,25 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
         point.tag('reward_type_explorer', reward_type_explorer);
       } else {
         //console.log("Multiple reward types encounted:\n" + act.rewards)
-        point.tag('reward_type_poc', 'misc');
-        point.tag('reward_type_explorer', 'misc');
+        point.tag('reward_type_poc', 'mixed');
+        point.tag('reward_type_explorer', 'mixed');
       }
       point.floatField('reward_hnt', act.totalAmount.floatBalance);
 
-    } else if (act.type == 'poc_receipts_v1' && act.challenger == hotspotIdentifier) {
-      // "Challenged Beaconer"
-      point.tag('type', 'challenged_beaconer');
-      point.tag('poc_result', act.path[0].result);
-
-    } else if (act.type == 'poc_receipts_v1' && act.path[0].challengee == hotspotIdentifier) {
-      // "Broadcast Beacon"
-      point.tag('type', 'broadcast_beacon');
-      point.tag('poc_result', act.path[0].result);
-      point.intField('witnesses', act.path[0].witnesses.length);
-
-    } else if (act.type == 'poc_receipts_v1' && act.path[0].witnesses.some(w => w.gateway == hotspotIdentifier)) {
-      // "Witnessed Beacon"
-      point.tag('type', 'witnessed_beacon');
-      point.tag('poc_result', act.path[0].result);
-      point.tag('beaconer', act.path[0].challengee);
-
-    } else if (act.type == 'poc_request_v1' && act.challenger == hotspotIdentifier) {
-      // "Constructed Challenge"
-      point.tag('type', 'constructed_challenge');
+    // Data Transfer activities
 
     } else if (act.type == 'state_channel_close_v1') {
       // "Data Transfer"
-      point.tag('type', 'data_transfer');
+      point.measurement('helium_data_transfer')
       point.intField('packets', act.stateChannel.summaries[0].num_packets);
       point.intField('dcs', act.stateChannel.summaries[0].num_dcs);
 
-    } else {
-      // catch unknown activity to be implemented
-      point.tag('type', 'unknown');
-    }
+    // Unknown activities (to be implemented)
 
-    point.booleanField('event', true);
+    } else {
+      point.measurement('helium_activity_unknown')
+      console.log("Unknown activity package encountered:\n" + act)
+    }
 
     if (DEBUG_TO_CONSOLE) {
       console.log("\n=== Activity " + "=".repeat(100));
