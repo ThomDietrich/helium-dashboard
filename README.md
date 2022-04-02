@@ -41,3 +41,25 @@ HELIUM_ACTIVITY_LOOKBACK_HOURS=900 npm start
 * Use latest version of Grafana
 * Import the provided dashboard json file.
 * Inside the general dashboard configuration: Set predefined variables per your setup and needs.
+
+## Execution in a Dockerized Environment
+
+The provided Dockerfile can be used to run this app periodically inside a container.
+Example of a `docker-compose.yaml` (adapt to your needs):
+
+```yaml
+  helium-exporter:
+    build:
+      context: ./helium-exporter-grafana
+    image: helium-exporter:latest
+    depends_on:
+      - influxdb
+    environment:
+      INFLUX_HOST: ${MONITORING_HOST}
+      INFLUX_PORT: 8086
+      INFLUX_BUCKET: helium
+      INFLUX_ORG: myorg
+      INFLUX_TOKEN: ${INFLUX_WRITE_TOKEN}
+      HELIUM_WALLET: ${HELIUM_WALLET}
+      HELIUM_HOTSPOT: ${HELIUM_HOTSPOT}
+```
