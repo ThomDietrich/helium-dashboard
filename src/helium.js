@@ -11,8 +11,8 @@ const processingTime = new Date(); // now
 const helium_client = new Client(Network.production, { retry: 100 });
 
 async function getPrice() {
-  const response = await axios('https://api.coingecko.com/api/v3/simple/price?ids=helium&vs_currencies=USD,EUR');
   console.log('Helium: collecting price data');
+  const response = await axios('https://api.coingecko.com/api/v3/simple/price?ids=helium&vs_currencies=USD,EUR');
 
   let point = new Point("helium_price")
   point.timestamp(processingTime);
@@ -57,7 +57,7 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
   let hotspotName = hotspot.name.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
   let hotspotGeotext = hotspot.geocode.shortCity + ", " + hotspot.geocode.shortStreet;
 
-  console.log(`Helium: fetching activities for ${hotspotName} since ${sinceDate.toString()}`);
+  console.log(`Helium: collecting activities for ${hotspotName} since ${sinceDate.toString()}`);
 
   let point = new Point("helium_hotspot")
     .timestamp(processingTime)
@@ -96,7 +96,7 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
   }
 
   if (activities.length == 0) {
-    console.log(`Helium: no activities for ${hotspotName} since ${sinceDate.toString()}`);
+    console.log(`Helium: -> no activities for ${hotspotName} since ${sinceDate.toString()}`);
     return;
   }
 
@@ -180,7 +180,7 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
     return point;
   });
 
-  console.log(`Helium: fetched ${activities.length} activities for ${hotspotName} (first ${DateTime.fromSeconds(activities[activities.length-1].time).toString()})`);
+  console.log(`Helium: -> fetched ${activities.length} activities for ${hotspotName} (first ${DateTime.fromSeconds(activities[activities.length-1].time).toString()})`);
 
   if (!DEBUG_TO_CONSOLE) {
     Influx.write.writePoints(points);
@@ -188,9 +188,8 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
 }
 
 async function processNetworkStats() {
-  const response = await axios.get('https://api.helium.io/v1/stats');
-  const data = response.data.data;
   console.log('Helium: collecting network stats');
+  const data = await helium_client.stats.get()
 
   let point = new Point("helium_stats")
     .timestamp(processingTime)
@@ -200,7 +199,12 @@ async function processNetworkStats() {
   point.intField('challenges', data.counts.challenges);
   point.intField('blocks', data.counts.blocks);
 
-  point.intField('challenges_active', data.challenge_counts.active);
+  point.intField('hotspots_registered', data.counts.hotspots);
+  point.intField('hotspots_online', data.counts.hotspotsOnline);
+  point.intField('hotspots_dataonly', data.counts.hotspotsDataonly);
+
+  point.intField('challenges_active', data.challengeCounts.active);
+  point.floatField('blocktime_lasthour_sec', data.blockTimes.lastHour.avg);
 
   if (DEBUG_TO_CONSOLE) {
     console.log("\n=== Network Stats " + "=".repeat(100));
