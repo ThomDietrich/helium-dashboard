@@ -23,6 +23,8 @@ async function getPrice() {
 
   if (DEBUG_TO_CONSOLE) {
     console.log("\n=== Price " + "=".repeat(100));
+    console.log(response)
+    console.log()
     console.log(point)
   } else {
     Influx.write.writePoint(point);
@@ -44,6 +46,8 @@ async function processAccountStats() {
 
   if (DEBUG_TO_CONSOLE) {
     console.log("\n=== Account Stats " + "=".repeat(100));
+    console.log(data)
+    console.log()
     console.log(point)
   } else {
     Influx.write.writePoint(point);
@@ -77,6 +81,8 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
 
   if (DEBUG_TO_CONSOLE) {
     console.log("\n=== Hotspot Stats " + "=".repeat(100));
+    console.log(hotspot)
+    console.log()
     console.log(point)
   } else {
     Influx.write.writePoint(point);
@@ -160,8 +166,8 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
     } else if (act.type == 'state_channel_close_v1') {
       // "Data Transfer"
       point.measurement('helium_data_transfer')
-      point.intField('packets', act.stateChannel.summaries[0].num_packets);
-      point.intField('dcs', act.stateChannel.summaries[0].num_dcs);
+      point.intField('packets', act.stateChannel.summaries[0].numPackets);
+      point.intField('dcs', act.stateChannel.summaries[0].numDcs);
 
     // Unknown activities (to be implemented)
 
@@ -208,6 +214,8 @@ async function processNetworkStats() {
 
   if (DEBUG_TO_CONSOLE) {
     console.log("\n=== Network Stats " + "=".repeat(100));
+    console.log(data)
+    console.log()
     console.log(point)
   } else {
     Influx.write.writePoint(point);
