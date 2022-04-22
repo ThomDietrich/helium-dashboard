@@ -149,9 +149,16 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
         reward_type = act.rewards[0].type
         let reward_type_explorer = (reward_type == 'poc_witnesses') ? 'witness' : (
           (reward_type == 'poc_challengers') ? 'challenger' : (
-            (reward_type == 'poc_challengees') ? 'beacon' : 'unknown'
+            (reward_type == 'poc_challengees') ? 'beacon' : (
+              (reward_type == 'data_credits') ? 'data' : 'unknown'
+            )
           )
         )
+        if (reward_type_explorer == 'unknown') {
+          console.log("Reward type unknown, skipping:");
+          console.log(act);
+          return
+        }
         point.tag('reward_type_poc', reward_type);
         point.tag('reward_type_explorer', reward_type_explorer);
       } else {
@@ -173,7 +180,7 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
 
     } else {
       point.measurement('helium_activity_unknown')
-      console.log("Unknown activity encountered:")
+      console.log("Unknown activity encountered (Ignore AddGatewayV1 and AssertLocationV2):")
       console.log(act)
     }
 
