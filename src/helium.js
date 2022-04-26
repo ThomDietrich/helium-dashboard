@@ -70,14 +70,12 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
     .tag('geotext', hotspotGeotext)
     .tag('latitude', hotspot.lat)
     .tag('longitude', hotspot.lng)
-    .tag('mode', hotspot.mode)
   ;
 
-  point.floatField('reward_scale', hotspot.rewardScale);
-
-  if (hotspot.score) {
-    point.floatField('score', hotspot.score);
+  if (hotspot.rewardScale) {
+    point.floatField('reward_scale', hotspot.rewardScale);
   }
+  point.intField('block_last_change', hotspot.lastChangeBlock);
 
   if (DEBUG_TO_CONSOLE) {
     console.log("\n=== Hotspot Stats " + "=".repeat(100));
@@ -89,7 +87,7 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
   }
 
   // fetch all activities after specified date
-  let page = await hotspot.activity.list();
+  let page = await hotspot.roles.list();
   while(page.data.length > 0 || page.hasMore) {
     let acts = page.data.filter(a => DateTime.fromSeconds(a.time) >= sinceDate);
     activities.push(...acts);
@@ -185,7 +183,7 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
     }
 
     if (DEBUG_TO_CONSOLE) {
-      console.log("\n=== Activity " + "=".repeat(100));
+      console.log("\n--- Hotspot Activity " + "-".repeat(60));
       console.log(act);
       console.log()
       console.log(point);

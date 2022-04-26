@@ -22,7 +22,7 @@ exports.handler = async (event, context) => {
   results.forEach((r, idx) => {
     console.log(`${tasks[idx].name}: ${r.status}`);
     if (r.status === 'rejected') {
-      console.log('  -> Error: ', r.reason.message);
+      console.log('  -> Error:', r.reason.message);
       // first encountered failure will be thrown as error for the lambda result
       if (!firstFailure) {
         firstFailure = r.reason.message;
