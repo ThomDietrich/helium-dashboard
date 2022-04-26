@@ -87,7 +87,7 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
   }
 
   // fetch all activities after specified date
-  let page = await hotspot.roles.list();
+  let page = await hotspot.activity.list();
   while(page.data.length > 0 || page.hasMore) {
     let acts = page.data.filter(a => DateTime.fromSeconds(a.time) >= sinceDate);
     activities.push(...acts);
@@ -106,6 +106,11 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
 
   // convert activities to Influx points
   const points = activities.map(act => {
+    if (DEBUG_TO_CONSOLE) {
+      console.log("\n--- Hotspot Activity " + "-".repeat(60));
+      console.log(act);
+    }
+
     const point = new Point('helium_activity')
       .timestamp(DateTime.fromSeconds(act.time).toJSDate())
       .tag('hotspot_id', hotspotIdentifier)
@@ -183,8 +188,6 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
     }
 
     if (DEBUG_TO_CONSOLE) {
-      console.log("\n--- Hotspot Activity " + "-".repeat(60));
-      console.log(act);
       console.log()
       console.log(point);
     }
