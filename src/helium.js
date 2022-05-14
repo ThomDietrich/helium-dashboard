@@ -118,7 +118,7 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
     ;
     point.booleanField('event', true);
 
-    // Proof of Coverage activities
+    // Proof of Coverage activities (before 2022-05-11)
 
     if (act.type == 'poc_receipts_v1' && act.challenger == hotspotIdentifier) {
       // "Challenged Beaconer"
@@ -142,6 +142,21 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
     } else if (act.type == 'poc_request_v1' && act.challenger == hotspotIdentifier) {
       // "Constructed Challenge"
       point.tag('poc_role', 'constructed_challenge');
+
+    // Proof of Coverage activities (after 2022-05-11)
+
+    } else if (act.type == 'poc_receipts_v2' && act.path[0].challengee == hotspotIdentifier) {
+      // "Broadcast Beacon"
+      point.tag('poc_role', 'broadcast_beacon');
+      point.tag('poc_result', act.path[0].result);
+      point.intField('witnesses', act.path[0].witnesses.length);
+
+    } else if (act.type == 'poc_receipts_v2' && act.path[0].witnesses.some(w => w.gateway == hotspotIdentifier)) {
+      // "Witnessed Beacon"
+      point.tag('poc_role', 'witnessed_beacon');
+      point.tag('poc_result', act.path[0].result);
+      point.tag('beaconer', act.path[0].challengee);
+      point.intField('witnesses', act.path[0].witnesses.length);
 
     // Rewards activities
 
@@ -183,8 +198,10 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
 
     } else {
       point.measurement('helium_activity_unknown')
-      console.log("Unknown activity encountered (Ignore AddGatewayV1 and AssertLocationV2):")
-      console.log(act)
+      console.log("Unknown activity encountered (Please fix this. You can ignore AddGatewayV1 and AssertLocationV2)")
+      if (!DEBUG_TO_CONSOLE) {
+        console.log(act)
+      }
     }
 
     if (DEBUG_TO_CONSOLE) {
@@ -204,6 +221,10 @@ async function processHotspotActivity(hotspotIdentifier, sinceDate) {
 async function processNetworkStats() {
   console.log('Helium: collecting network stats');
   const data = await helium_client.stats.get()
+  if (DEBUG_TO_CONSOLE) {
+    console.log("\n=== Network Stats " + "=".repeat(100));
+    console.log(data)
+  }
 
   let point = new Point("helium_stats")
     .timestamp(processingTime)
@@ -218,11 +239,11 @@ async function processNetworkStats() {
   point.intField('hotspots_dataonly', data.counts.hotspotsDataonly);
 
   point.intField('challenges_active', data.challengeCounts.active);
-  point.floatField('blocktime_lasthour_sec', data.blockTimes.lastHour.avg);
+  if (data.blockTimes.lastHour.avg) {
+    point.floatField('blocktime_lasthour_sec', data.blockTimes.lastHour.avg);
+  }
 
   if (DEBUG_TO_CONSOLE) {
-    console.log("\n=== Network Stats " + "=".repeat(100));
-    console.log(data)
     console.log()
     console.log(point)
   } else {
