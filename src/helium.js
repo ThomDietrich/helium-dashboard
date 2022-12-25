@@ -8,11 +8,11 @@ const ACTIVITY_LOOKBACK_HOURS = process.env.HELIUM_ACTIVITY_LOOKBACK_HOURS ? pro
 const DEBUG_TO_CONSOLE = process.env.DEBUG_TO_CONSOLE ? true : false;
 
 const processingTime = new Date(); // now
-const helium_client = new Client(Network.production, { retry: 100 });
+const helium_client = new Client(Network.production, { retry: 100, userAgent: 'helium-exporter-grafana/latest (ThomDietrich)' });
 
 async function getPrice() {
   console.log('Helium: collecting price data');
-  const response = await axios('https://api.coingecko.com/api/v3/simple/price?ids=helium&vs_currencies=USD,EUR');
+  const response = await axios('https://api.coingecko.com/api/v3/simple/price?ids=helium&vs_currencies=USD,EUR', { headers: { 'User-Agent': 'helium-exporter-grafana/latest (ThomDietrich)'}});
 
   let point = new Point("helium_price")
   point.timestamp(processingTime);
